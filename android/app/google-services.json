@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861592838025",
+    "project_id": "sporty-2ef60",
+    "storage_bucket": "sporty-2ef60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861592838025:android:e5391b4a39209bf5f0cb58",
+        "android_client_info": {
+          "package_name": "com.yourname.sporty"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCw4n2L--2Ki7rGOncxJ-BmYB-EJqOjp2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
