@@ -1,3 +1,5 @@
+// lib/features/game/data/game_repository.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../../home/domain/game_model.dart';
@@ -21,11 +23,11 @@ class CreateGameRepository {
 
     for (final doc in snapshot.docs) {
       final game = GameModel.fromMap(doc.data());
-      if (excludeGameId != null && game.id == excludeGameId)
+      if (excludeGameId != null && game.id == excludeGameId) {
         continue;
+      }
       final gameStart = game.dateTime;
-      final gameEnd =
-          game.dateTime.add(const Duration(hours: 2));
+      final gameEnd = game.dateTime.add(const Duration(hours: 2));
       if (start.isBefore(gameEnd) && end.isAfter(gameStart)) {
         return game;
       }
@@ -56,6 +58,11 @@ class CreateGameRepository {
     required String skillLevel,
     String? notes,
   }) async {
+    // Integrity guard: never allow a game in the past, regardless of caller.
+    if (dateTime.isBefore(DateTime.now())) {
+      return 'Game time cannot be in the past. Please pick a future date and time.';
+    }
+
     final conflict = await _getConflictingGame(
       userId: hostId,
       dateTime: dateTime,
@@ -78,10 +85,7 @@ class CreateGameRepository {
       notes: notes,
       createdAt: DateTime.now(),
     );
-    await _firestore
-        .collection('games')
-        .doc(id)
-        .set(game.toMap());
+    await _firestore.collection('games').doc(id).set(game.toMap());
     return null;
   }
 
@@ -90,6 +94,9 @@ class CreateGameRepository {
     required String userId,
     required DateTime gameDateTime,
   }) async {
+    // The schedule-conflict check runs first and OUTSIDE the transaction:
+    // it queries across all of the user's games, and Firestore transactions
+    // can only read individual documents, not run queries.
     final conflict = await _getConflictingGame(
       userId: userId,
       dateTime: gameDateTime,
@@ -98,23 +105,47 @@ class CreateGameRepository {
     if (conflict != null) {
       return 'You are already playing ${conflict.sport} at ${conflict.venue} at this time.';
     }
-    await _firestore
-        .collection('games')
-        .doc(gameId)
-        .update({
-      'joinedPlayerIds': FieldValue.arrayUnion([userId]),
-    });
-    return null;
+
+    final gameRef = _firestore.collection('games').doc(gameId);
+
+    try {
+      return await _firestore.runTransaction<String?>((transaction) async {
+        final snapshot = await transaction.get(gameRef);
+
+        if (!snapshot.exists) {
+          return 'This game no longer exists.';
+        }
+
+        final game = GameModel.fromMap(snapshot.data()!);
+
+        // Already in the game — nothing to do, treat as success.
+        if (game.joinedPlayerIds.contains(userId)) {
+          return null;
+        }
+
+        // Atomic capacity check — this is the race-condition fix. Because
+        // runTransaction re-reads and retries on any concurrent write to this
+        // document, two users can no longer both grab the final spot.
+        if (game.joinedPlayerIds.length >= game.totalPlayersNeeded) {
+          return 'This game just filled up. Try another one.';
+        }
+
+        transaction.update(gameRef, {
+          'joinedPlayerIds': FieldValue.arrayUnion([userId]),
+        });
+
+        return null;
+      });
+    } catch (e) {
+      return 'Could not join the game. Check your connection and try again.';
+    }
   }
 
   Future<void> leaveGame({
     required String gameId,
     required String userId,
   }) async {
-    await _firestore
-        .collection('games')
-        .doc(gameId)
-        .update({
+    await _firestore.collection('games').doc(gameId).update({
       'joinedPlayerIds': FieldValue.arrayRemove([userId]),
     });
   }
