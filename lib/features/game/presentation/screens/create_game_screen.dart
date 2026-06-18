@@ -1,3 +1,5 @@
+// lib/features/game/presentation/screens/create_game_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,8 +17,7 @@ class CreateGameScreen extends ConsumerStatefulWidget {
   const CreateGameScreen({super.key});
 
   @override
-  ConsumerState<CreateGameScreen> createState() =>
-      _CreateGameScreenState();
+  ConsumerState<CreateGameScreen> createState() => _CreateGameScreenState();
 }
 
 class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
@@ -26,8 +27,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
   String _selectedSport = AppConstants.sports.first;
   String _selectedSkillLevel = AppConstants.skillLevels.first;
-  DateTime _selectedDate =
-      DateTime.now().add(const Duration(hours: 2));
+  DateTime _selectedDate = DateTime.now().add(const Duration(hours: 2));
   TimeOfDay _selectedTime = TimeOfDay.fromDateTime(
     DateTime.now().add(const Duration(hours: 2)),
   );
@@ -87,6 +87,36 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
 
   Future<void> _submitGame() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // The date picker blocks past *dates*, but selecting today plus a time
+    // earlier than the current moment still lands in the past. Block that.
+    if (_combinedDateTime.isBefore(DateTime.now())) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Invalid Time',
+            style: TextStyle(color: AppColors.textPrimary),
+          ),
+          content: const Text(
+            'This game is set in the past. Please pick a date and time in the future.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'OK',
+                style: TextStyle(color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -97,19 +127,18 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
           await ref.read(authRepositoryProvider).getUser(user.uid);
       final hostName = userModel?.name ?? 'Anonymous';
 
-      final error =
-          await ref.read(createGameRepositoryProvider).createGame(
-                hostId: user.uid,
-                hostName: hostName,
-                sport: _selectedSport,
-                venue: _venueController.text.trim(),
-                dateTime: _combinedDateTime,
-                totalPlayersNeeded: _playersNeeded,
-                skillLevel: _selectedSkillLevel,
-                notes: _notesController.text.trim().isEmpty
-                    ? null
-                    : _notesController.text.trim(),
-              );
+      final error = await ref.read(createGameRepositoryProvider).createGame(
+            hostId: user.uid,
+            hostName: hostName,
+            sport: _selectedSport,
+            venue: _venueController.text.trim(),
+            dateTime: _combinedDateTime,
+            totalPlayersNeeded: _playersNeeded,
+            skillLevel: _selectedSkillLevel,
+            notes: _notesController.text.trim().isEmpty
+                ? null
+                : _notesController.text.trim(),
+          );
 
       if (error != null) {
         if (mounted) {
@@ -123,8 +152,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
               ),
               content: Text(
                 error,
-                style:
-                    const TextStyle(color: AppColors.textSecondary),
+                style: const TextStyle(color: AppColors.textSecondary),
               ),
               actions: [
                 TextButton(
@@ -187,8 +215,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
               children: AppConstants.sports.map((sport) {
                 final isSelected = _selectedSport == sport;
                 return GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedSport = sport),
+                  onTap: () => setState(() => _selectedSport = sport),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
@@ -209,9 +236,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                         color: isSelected
                             ? Colors.black
                             : AppColors.textSecondary,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
                         fontSize: 13,
                       ),
                     ),
@@ -226,8 +252,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
               controller: _venueController,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: const InputDecoration(
-                hintText:
-                    'e.g. Decathlon Sports Centre, Hinjawadi',
+                hintText: 'e.g. Decathlon Sports Centre, Hinjawadi',
                 prefixIcon: Icon(
                   Icons.location_on_outlined,
                   color: AppColors.textSecondary,
@@ -248,8 +273,7 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                 Expanded(
                   child: _PickerButton(
                     icon: Icons.calendar_today_outlined,
-                    label: DateFormat('EEE, MMM d')
-                        .format(_selectedDate),
+                    label: DateFormat('EEE, MMM d').format(_selectedDate),
                     onTap: _pickDate,
                   ),
                 ),
@@ -267,8 +291,8 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
             _SectionLabel(label: 'Players Needed'),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
@@ -279,13 +303,13 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                 children: [
                   const Text(
                     'Total players',
-                    style:
-                        TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                   Row(
                     children: [
                       IconButton(
-                        onPressed: _playersNeeded > AppConstants.minPlayersLimit
+                        onPressed: _playersNeeded >
+                                AppConstants.minPlayersLimit
                             ? () => setState(() => _playersNeeded--)
                             : null,
                         icon: const Icon(Icons.remove_circle_outline),
@@ -300,9 +324,10 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                         ),
                       ),
                       IconButton(
-                        onPressed: _playersNeeded < AppConstants.maxPlayersLimit
-                          ? () => setState(() => _playersNeeded++)
-                          : null,
+                        onPressed: _playersNeeded 
+                                AppConstants.maxPlayersLimit
+                            ? () => setState(() => _playersNeeded++)
+                            : null,
                         icon: const Icon(Icons.add_circle_outline),
                         color: AppColors.primary,
                       ),
@@ -319,17 +344,13 @@ class _CreateGameScreenState extends ConsumerState<CreateGameScreen> {
                 final isSelected = _selectedSkillLevel == level;
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(
-                        () => _selectedSkillLevel = level),
+                    onTap: () => setState(() => _selectedSkillLevel = level),
                     child: Container(
                       margin: EdgeInsets.only(
-                        right: level !=
-                                AppConstants.skillLevels.last
-                            ? 8
-                            : 0,
+                        right:
+                            level != AppConstants.skillLevels.last ? 8 : 0,
                       ),
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
@@ -425,8 +446,7 @@ class _PickerButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
